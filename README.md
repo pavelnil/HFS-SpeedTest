@@ -38,7 +38,8 @@
 ---
 
 ## **Plugin Settings**:
-   - ![screenshot5](../../blob/main/screenshots/screenshot5.jpg)
+
+![screenshot5](../../blob/main/screenshots/screenshot5.jpg)
 
 ## **Installation**:
 1. Copy the plugin folder to the `\plugins` directory in **HFS**
@@ -66,3 +67,4 @@
 Support:
 * BTC: `bc1qeuq7s8w0x7ma59mwd4gtj7e9rjl2g9xqvxdsl6`
 * TON: `UQAOQXGtTi_aM1u54aQjb8QiXZkQdaL9MDSky5LHN0F5-yF2`
+
