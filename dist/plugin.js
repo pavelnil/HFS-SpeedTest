@@ -1,17 +1,14 @@
 ﻿const { join } = require('path');
 const { readFileSync } = require('fs');
 const crypto = require('crypto');
+const path = require('path');
 
-let downloadBuffer = null;
-let bufferLastAccess = 0;
-let bufferCleanupTimer = null;
-const BUFFER_TIMEOUT = 30 * 60 * 1000;
-const BUFFER_SIZE = 100 * 1024 * 1024;
+exports.description = "Measure connection speed to the server";
+exports.version = 1.7;
+exports.apiRequired = 10;
+exports.repo = "pavelnil/HFS-SpeedTest"
+exports.preview = ["https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot1.jpg","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot2.jpg","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot3.jpg","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot4.jpg","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot5.jpg"]
 
-exports.init = (api) => {
-    const { getConfig, setError } = api;
-    const PLUGIN_NAME = 'hfs-speedtest';
-    
     exports.config = {
         allowedAccounts: {
             defaultValue: 'admin',
@@ -41,11 +38,21 @@ exports.init = (api) => {
         }
     };
 
+let downloadBuffer = null;
+let bufferLastAccess = 0;
+let bufferCleanupTimer = null;
+const BUFFER_TIMEOUT = 30 * 60 * 1000;
+const BUFFER_SIZE = 100 * 1024 * 1024;
+
+exports.init = (api) => {
+    const { getConfig, setError } = api;
+    const PLUGIN_NAME = 'speedtest';
+    
     const initDownloadBuffer = () => {
         if (!downloadBuffer || downloadBuffer.length !== BUFFER_SIZE) {
             downloadBuffer = Buffer.alloc(BUFFER_SIZE);
             crypto.randomFillSync(downloadBuffer);
-            console.log(`[HFS-SpeedTest] Initialized download buffer: ${BUFFER_SIZE} bytes`);
+            console.log(`[${PLUGIN_NAME}] Initialized download buffer: ${BUFFER_SIZE} bytes`);
         }
     };
     
@@ -59,7 +66,7 @@ exports.init = (api) => {
             if (downloadBuffer && Date.now() - bufferLastAccess > BUFFER_TIMEOUT) {
                 const bufferSize = downloadBuffer.length;
                 downloadBuffer = null;
-                console.log(`[HFS-SpeedTest] Cleared download buffer (${bufferSize} bytes) after 30 minutes of inactivity`);
+                console.log(`[${PLUGIN_NAME}] Cleared download buffer (${bufferSize} bytes) after 30 minutes of inactivity`);
             }
         }, BUFFER_TIMEOUT);
     };
@@ -105,25 +112,31 @@ exports.init = (api) => {
                 }
             }
 
-if (isSpeedTestPage) {
-    let html = readFileSync(join(__dirname, 'public', 'speedtest.html'), 'utf8');
-    
-    const settingsScript = `
-        <script>
-            window.speedtestSettings = {
-                testDuration: ${testDuration},
-                pingCount: ${pingCount},
-                enableGeoIP: ${enableGeoIP}
-            };
-        </script>
-    `;
+            if (isSpeedTestPage) {
+                let html = readFileSync(join(__dirname, 'public', 'speedtest.html'), 'utf8');
 
-    html = html.replace('</head>', `${settingsScript}</head>`);
+                const pluginBasePath = `/~/plugins/${path.basename(__dirname)}`;
     
-    ctx.type = 'html';
-    ctx.body = html;
-    return;
-}
+                html = html
+                    .replace(/src="\.\.\/\.\.\//g, `src="${pluginBasePath}/`)
+                    .replace(/href="\.\.\/\.\.\//g, `href="${pluginBasePath}/`);
+    
+                const settingsScript = `
+                    <script>
+                        window.speedtestSettings = {
+                            testDuration: ${testDuration},
+                            pingCount: ${pingCount},
+                            enableGeoIP: ${enableGeoIP}
+                        };
+                    </script>
+                `;
+
+                html = html.replace('</head>', `${settingsScript}</head>`);
+    
+                ctx.type = 'html';
+                ctx.body = html;
+                return;
+            }
 
             if (isIPRequest) {
                 ctx.status = 200;
@@ -213,7 +226,7 @@ if (isSpeedTestPage) {
             }
 
         } catch (e) {
-            setError(`HFS-SpeedTest error: ${e.message}`);
+            setError(`speedtest plugin error: ${e.message}`);
             ctx.status = 500;
             ctx.body = 'Internal server error';
         }
@@ -222,10 +235,7 @@ if (isSpeedTestPage) {
     scheduleBufferCleanup();
     
     return {
-        description: "Measure connection speed to the server",
-        version: 1.7,
-        apiRequired: 10,
-        frontend_js: 'hfs-speedtest.js'
+        frontend_js: 'main.js'
     };
 };
 
@@ -238,6 +248,6 @@ exports.unload = () => {
     if (downloadBuffer) {
         const bufferSize = downloadBuffer.length;
         downloadBuffer = null;
-        console.log(`[HFS-SpeedTest] Unloaded plugin and cleared download buffer (${bufferSize} bytes)`);
+        console.log(`[${PLUGIN_NAME}] Unloaded plugin and cleared download buffer (${bufferSize} bytes)`);
     }
 };
