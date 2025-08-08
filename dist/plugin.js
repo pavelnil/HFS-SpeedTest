@@ -1,52 +1,54 @@
-﻿const { join } = require('path');
-const { readFileSync } = require('fs');
-const crypto = require('crypto');
-const path = require('path');
-
-exports.description = "Measure connection speed to the server";
+﻿exports.description = "Measure connection speed to the server";
 exports.version = 1.7;
 exports.apiRequired = 10;
 exports.repo = "pavelnil/HFS-SpeedTest"
-exports.preview = ["https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot1.jpg","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot2.jpg","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot3.jpg","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot4.jpg","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot5.jpg"]
+exports.preview = ["https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot1.jpg?raw=true","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot2.jpg?raw=true","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot3.jpg?raw=true","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot4.jpg?raw=true","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot5.jpg?raw=true"]
 
-    exports.config = {
-        allowedAccounts: {
-            defaultValue: 'admin',
-            helperText: 'Allowed accounts/groups separated by "|". Example: admin|group1'
-        },
-        speedtestUrl: {
-            defaultValue: '/speedtest',
-            helperText: 'URL to access the test. Example: /network-test'
-        },
-        testDuration: {
-            defaultValue: 5,
-            helperText: 'Download/upload test duration in seconds. Example: 5'
-        },
-        pingCount: {
-            defaultValue: 10,
-            helperText: 'Number of pings to measure latency. Example: 10'
-        },
-        allowAnonymous: {
-            defaultValue: false,
-            helperText: 'Allow anonymous users to use the test',
-            type: 'boolean'
-        },
-        enableGeoIP: {
-            defaultValue: false,
-            helperText: 'Enable country and city detection by IP',
-            type: 'boolean'
-        }
-    };
+exports.config = {
+    allowedAccounts: {
+        defaultValue: 'admin',
+        helperText: 'Allowed accounts/groups separated by "|". Example: admin|group1'
+    },
+    speedtestUrl: {
+        defaultValue: '/speedtest',
+        helperText: 'URL to access the test. Example: /network-test'
+    },
+    testDuration: {
+        defaultValue: 5,
+        helperText: 'Download/upload test duration in seconds. Example: 5'
+    },
+    pingCount: {
+        defaultValue: 10,
+        helperText: 'Number of pings to measure latency. Example: 10'
+    },
+    allowAnonymous: {
+        defaultValue: false,
+        helperText: 'Allow anonymous users to use the test',
+        type: 'boolean'
+    },
+    enableGeoIP: {
+        defaultValue: false,
+        helperText: 'Enable country and city detection by IP',
+        type: 'boolean'
+    }
+};
 
 let downloadBuffer = null;
 let bufferLastAccess = 0;
 let bufferCleanupTimer = null;
 const BUFFER_TIMEOUT = 30 * 60 * 1000;
 const BUFFER_SIZE = 100 * 1024 * 1024;
+const PLUGIN_NAME = 'speedtest';
 
 exports.init = (api) => {
-    const { getConfig, setError } = api;
-    const PLUGIN_NAME = 'speedtest';
+    const path = api.require('path');
+    const fs = api.require('fs');
+    const crypto = api.require('crypto');
+    const { join } = path;
+    const { readFileSync } = fs;
+
+    const getConfig = api.getConfig;
+    const setError = api.setError;
     
     const initDownloadBuffer = () => {
         if (!downloadBuffer || downloadBuffer.length !== BUFFER_SIZE) {
