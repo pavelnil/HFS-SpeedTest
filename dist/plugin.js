@@ -1,8 +1,8 @@
 ﻿exports.description = "Measure connection speed to the server";
 exports.version = 1.7;
 exports.apiRequired = 10;
-exports.repo = "pavelnil/HFS-SpeedTest"
-exports.preview = ["https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot1.jpg?raw=true","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot2.jpg?raw=true","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot3.jpg?raw=true","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot4.jpg?raw=true","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot5.jpg?raw=true"]
+exports.repo = "pavelnil/HFS-SpeedTest";
+exports.preview = ["https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot1.jpg?raw=true","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot2.jpg?raw=true","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot3.jpg?raw=true","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot4.jpg?raw=true","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot5.jpg?raw=true"];
 
 exports.config = {
     allowedAccounts: {
