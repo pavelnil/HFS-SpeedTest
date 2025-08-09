@@ -2,7 +2,7 @@
 exports.version = 1.7
 exports.apiRequired = 10
 exports.repo = "pavelnil/HFS-SpeedTest"
-exports.preview = ["https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot1.jpg?raw=true","https://raw.githubusercontent.com/pavelnil/HFS-SpeedTest/refs/heads/main/screenshots/screenshot1.jpg","https://raw.githubusercontent.com/pavelnil/HFS-SpeedTest/refs/heads/main/screenshots/screenshot2.jpg","https://raw.githubusercontent.com/pavelnil/HFS-SpeedTest/refs/heads/main/screenshots/screenshot3.jpg","https://raw.githubusercontent.com/pavelnil/HFS-SpeedTest/refs/heads/main/screenshots/screenshot4.jpg","https://raw.githubusercontent.com/pavelnil/HFS-SpeedTest/refs/heads/main/screenshots/screenshot5.jpg"]
+exports.preview = ["https://raw.githubusercontent.com/pavelnil/HFS-SpeedTest/refs/heads/main/screenshots/screenshot1.jpg","https://raw.githubusercontent.com/pavelnil/HFS-SpeedTest/refs/heads/main/screenshots/screenshot2.jpg","https://raw.githubusercontent.com/pavelnil/HFS-SpeedTest/refs/heads/main/screenshots/screenshot3.jpg","https://raw.githubusercontent.com/pavelnil/HFS-SpeedTest/refs/heads/main/screenshots/screenshot4.jpg","https://raw.githubusercontent.com/pavelnil/HFS-SpeedTest/refs/heads/main/screenshots/screenshot5.jpg"]
 
 exports.config = {
     allowedAccounts: {
