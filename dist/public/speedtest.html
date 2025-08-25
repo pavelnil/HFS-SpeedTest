@@ -123,6 +123,7 @@
             justify-content: center;
             font-size: 14px;
             font-weight: bold;
+            flex-shrink: 0;
         }
 
         .ip-content .value {
@@ -337,6 +338,7 @@
                 width: 26px;
                 height: 26px;
                 font-size: 10px;
+                flex-shrink: 0;
             }
             
             .ip-row {
@@ -612,94 +614,113 @@
         }
     }
     
-    async function getClientIP() {
-        try {
-            const response = await fetch('/~/ip');
-            const data = await response.json();
-            
-            let ipv4 = null;
-            let ipv6 = null;
-            let isLocal = false;
-            
-            if (data.ip) {
-                if (data.ip.includes('.')) {
-                    ipv4 = data.ip;
-                } else if (data.ip.includes(':')) {
-                    ipv6 = data.ip;
+async function getClientIP() {
+    try {
+        const response = await fetch('/~/ip');
+        const data = await response.json();
+        
+        let ipv4 = null;
+        let ipv6 = null;
+        
+        if (data.ip) {
+            if (data.ip.includes('.')) {
+                ipv4 = data.ip;
+            } else if (data.ip.includes(':')) {
+                ipv6 = data.ip;
+            }
+        }
+        
+        if (data.ips && data.ips.length > 0) {
+            for (const ip of data.ips) {
+                if (ip.includes('.') && !ipv4) {
+                    ipv4 = ip;
+                } else if (ip.includes(':') && !ip.includes('.') && !ipv6) {
+                    ipv6 = ip;
                 }
             }
-            
-            if (data.ips && data.ips.length > 0) {
-                for (const ip of data.ips) {
-                    if (ip.includes('.') && !ipv4) {
-                        ipv4 = ip;
-                    } else if (ip.includes(':') && !ip.includes('.') && !ipv6) {
-                        ipv6 = ip;
-                    }
-                }
+        }
+        
+        const isLocalIPv4 = isLocalIP(ipv4);
+        const isLocalIPv6 = isLocalIP(ipv6);
+        
+        if (!ipv6 && !isLocalIPv4 && !isLocalIPv6) {
+            const detectedIPv6 = await getIPv6();
+            if (detectedIPv6 && detectedIPv6.includes(':') && !detectedIPv6.includes('.')) {
+                ipv6 = detectedIPv6;
             }
-            
-            isLocal = isLocalIP(ipv4) || isLocalIP(ipv6);
-            
-            if (!ipv6 && !isLocal) {
-                const detectedIPv6 = await getIPv6();
-                if (detectedIPv6 && detectedIPv6.includes(':') && !detectedIPv6.includes('.')) {
-                    ipv6 = detectedIPv6;
-                }
+        }
+        
+        if (ipv4) {
+            ipv4Value.textContent = `IPv4: ${ipv4}`;
+            if (settings.enableGeoIP && !isLocalIPv4) {
+                await updateGeoInfo(ipv4, ipv4Value);
+            } else if (isLocalIPv4) {
+                ipv4Value.textContent += ' | Local IP';
             }
-            
-            if (ipv4) {
-                ipv4Value.textContent = `IPv4: ${ipv4}`;
-                if (settings.enableGeoIP && !isLocal) {
-                    await updateGeoInfo(ipv4, ipv4Value);
-                }
+        } else if (settings.useExternalForNotDetected) {
+            ipv4Value.textContent = 'IPv4: Getting public IP...';
+            const publicIPv4 = await getPublicIP(4);
+            if (publicIPv4) {
+                ipv4Value.textContent = `IPv4: ${publicIPv4}`;
+                if (settings.enableGeoIP) await updateGeoInfo(publicIPv4, ipv4Value);
             } else {
                 ipv4Value.textContent = 'IPv4: Not detected';
             }
-            
-            if (ipv6) {
-                const cleanIPv6 = ipv6.replace(/^::ffff:/, '');
-                
-                if (cleanIPv6.includes('.')) {
-                    ipv6Value.textContent = 'IPv6: Not detected';
-                } else {
-                    ipv6Value.textContent = `IPv6: ${cleanIPv6}`;
-                    if (settings.enableGeoIP && !isLocal) {
-                        await updateGeoInfo(cleanIPv6, ipv6Value);
-                    }
+        } else {
+            ipv4Value.textContent = 'IPv4: Not detected';
+        }
+        
+        if (ipv6) {
+            const cleanIPv6 = ipv6.replace(/^::ffff:/, '');
+            if (cleanIPv6.includes('.')) {
+                ipv6Value.textContent = 'IPv6: Not detected';
+            } else {
+                ipv6Value.textContent = `IPv6: ${cleanIPv6}`;
+                if (settings.enableGeoIP && !isLocalIPv6) {
+                    await updateGeoInfo(cleanIPv6, ipv6Value);
+                } else if (isLocalIPv6) {
+                    ipv6Value.textContent += ' | Local IP';
                 }
+            }
+        } else if (settings.useExternalForNotDetected) {
+            ipv6Value.textContent = 'IPv6: Getting public IP...';
+            const publicIPv6 = await getPublicIP(6);
+            if (publicIPv6 && publicIPv6.includes(':') && !publicIPv6.includes('.')) {
+                ipv6Value.textContent = `IPv6: ${publicIPv6}`;
+                if (settings.enableGeoIP) await updateGeoInfo(publicIPv6, ipv6Value);
             } else {
                 ipv6Value.textContent = 'IPv6: Not detected';
             }
-            
-            if (isLocal && settings.enableGeoIP) {
+        } else {
+            ipv6Value.textContent = 'IPv6: Not detected';
+        }
+        
+        if ((isLocalIPv4 || isLocalIPv6) && settings.useExternalForLocal) {
+            if (isLocalIPv4) {
                 ipv4Value.textContent = 'IPv4: Getting public IP...';
-                ipv6Value.textContent = 'IPv6: Getting public IP...';
-                
-                const [publicIPv4, publicIPv6] = await Promise.all([
-                    getPublicIP(4),
-                    getPublicIP(6)
-                ]);
-                
+                const publicIPv4 = await getPublicIP(4);
                 if (publicIPv4) {
                     ipv4Value.textContent = `IPv4: ${publicIPv4}`;
-                    await updateGeoInfo(publicIPv4, ipv4Value);
-                }
-                
-                if (publicIPv6 && publicIPv6.includes(':') && !publicIPv6.includes('.')) {
-                    ipv6Value.textContent = `IPv6: ${publicIPv6}`;
-                    await updateGeoInfo(publicIPv6, ipv6Value);
-                } else if (publicIPv6) {
-                    ipv6Value.textContent = 'IPv6: Not detected';
+                    if (settings.enableGeoIP) await updateGeoInfo(publicIPv4, ipv4Value);
                 }
             }
             
-        } catch (e) {
-            console.error('IP detection error:', e);
-            ipv4Value.textContent = 'IPv4: Unavailable';
-            ipv6Value.textContent = 'IPv6: Unavailable';
+            if (isLocalIPv6) {
+                ipv6Value.textContent = 'IPv6: Getting public IP...';
+                const publicIPv6 = await getPublicIP(6);
+                if (publicIPv6 && publicIPv6.includes(':') && !publicIPv6.includes('.')) {
+                    ipv6Value.textContent = `IPv6: ${publicIPv6}`;
+                    if (settings.enableGeoIP) await updateGeoInfo(publicIPv6, ipv6Value);
+                }
+            }
         }
+        
+    } catch (e) {
+        console.error('IP detection error:', e);
+        ipv4Value.textContent = 'IPv4: Unavailable';
+        ipv6Value.textContent = 'IPv6: Unavailable';
     }
+}
     
     async function updateGeoInfo(ip, element) {
         try {
@@ -879,6 +900,24 @@
         });
     }
     
+    function adjustDownloadChartScale() {
+        if (downloadChart && downloadChart.data.datasets[0].data.length > 0) {
+            const downloadDataPoints = downloadChart.data.datasets[0].data;
+            const maxX = Math.max(...downloadDataPoints.map(point => point.x));
+            downloadChart.options.scales.x.max = maxX * 1.001, 0.5;
+            downloadChart.update('none');
+        }
+    }
+    
+    function adjustUploadChartScale() {
+        if (uploadChart && uploadChart.data.datasets[0].data.length > 0) {
+            const uploadDataPoints = uploadChart.data.datasets[0].data;
+            const maxX = Math.max(...uploadDataPoints.map(point => point.x));
+            uploadChart.options.scales.x.max = maxX * 1.001, 0.5;
+            uploadChart.update('none');
+        }
+    }
+
     async function testLatency() {
         const times = [];
         updateProgress(15, 'Measuring ping...');
@@ -1047,6 +1086,17 @@
         };
     }
 
+    function calculateMedian(values) {
+        if (values.length === 0) return 0;
+        
+        const sortedValues = [...values].sort((a, b) => a - b);
+        const mid = Math.floor(sortedValues.length / 2);
+        
+        return sortedValues.length % 2 !== 0 
+            ? sortedValues[mid] 
+            : (sortedValues[mid - 1] + sortedValues[mid]) / 2;
+    }
+
     async function testDownload(params, medianPing) {
         const chunkSizeMB = (params.chunkSizeBytes / (1024 * 1024)).toFixed(1);
         updateProgress(30, `Chunk ${chunkSizeMB}MB - Testing download...`);
@@ -1104,8 +1154,9 @@
         }
         
         if (downloadData.length > 0) {
-            const lastSpeed = downloadData[downloadData.length - 1].y;
-            downloadValue.textContent = lastSpeed.toFixed(2);
+            const speedValues = downloadData.slice(1).map(point => point.y);
+            const medianSpeed = calculateMedian(speedValues);
+            downloadValue.textContent = medianSpeed.toFixed(2);
             if (downloadChart) downloadChart.update();
         }
     }
@@ -1123,6 +1174,7 @@
         
         uploadData = [{x:0, y:0}];
         initCharts();
+        adjustDownloadChartScale();
         if (uploadChart) uploadChart.update();
         
         const chunkSizeBytes = params.chunkSizeBytes;
@@ -1169,70 +1221,72 @@
         }
         
         if (uploadData.length > 0) {
-            const lastSpeed = uploadData[uploadData.length - 1].y;
-            uploadValue.textContent = lastSpeed.toFixed(2);
+            const speedValues = uploadData.slice(1).map(point => point.y);
+            const medianSpeed = calculateMedian(speedValues);
+            uploadValue.textContent = medianSpeed.toFixed(2);
             if (uploadChart) uploadChart.update();
+            adjustUploadChartScale();
         }
     }
     
-    async function runSpeedTest() {
-        if (testActive) return;
+async function runSpeedTest() {
+    if (testActive) return;
+    
+    try {
+        testActive = true;
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        resultsDiv.style.display = 'grid';
+        chartsDiv.style.display = 'grid';
+        startBtn.classList.remove('pulse');
+        updateProgress(0, 'Initializing...');
         
-        try {
-            testActive = true;
-            startBtn.disabled = true;
-            stopBtn.disabled = false;
-            resultsDiv.style.display = 'grid';
-            chartsDiv.style.display = 'grid';
-            startBtn.classList.remove('pulse');
-            updateProgress(0, 'Initializing...');
-            
-            if (downloadChart) {
-                downloadChart.destroy();
-                downloadChart = null;
-            }
-            if (uploadChart) {
-                uploadChart.destroy();
-                uploadChart = null;
-            }
-            
-            downloadData = [];
-            uploadData = [];
-            downloadValue.textContent = '0.00';
-            uploadValue.textContent = '0.00';
-            pingValue.textContent = '0.00';
-            jitterValue.textContent = '0.00';
-            
-            resultsDiv.classList.add('fade-in');
-            chartsDiv.classList.add('fade-in');
-            
-            medianPing = await testLatency();
-            if (!testActive) return;
-            
-            updateProgress(20, 'Calibrating download...');
-            const downloadCalibration = await calibrateDownload(medianPing);
-            if (!testActive) return;
-            
-            await testDownload(downloadCalibration, medianPing);
-            if (!testActive) return;
-            
-            updateProgress(60, 'Calibrating upload...');
-            const uploadCalibration = await calibrateUpload(medianPing);
-            if (!testActive) return;
-            
-            await testUpload(uploadCalibration, medianPing);
-            
-            updateProgress(100, 'Test completed!');
-        } catch (e) {
-            console.error('Test error:', e);
-            updateProgress(0, `Error: ${e.message}`);
-        } finally {
-            testActive = false;
-            startBtn.disabled = false;
-            stopBtn.disabled = true;
-            startBtn.classList.add('pulse');
+        if (downloadChart) {
+            downloadChart.destroy();
+            downloadChart = null;
         }
+        if (uploadChart) {
+            uploadChart.destroy();
+            uploadChart = null;
+        }
+        
+        downloadData = [];
+        uploadData = [];
+        downloadValue.textContent = '0.00';
+        uploadValue.textContent = '0.00';
+        pingValue.textContent = '0.00';
+        jitterValue.textContent = '0.00';
+        
+        resultsDiv.classList.add('fade-in');
+        chartsDiv.classList.add('fade-in');
+        
+        medianPing = await testLatency();
+        if (!testActive) return;
+        
+        updateProgress(20, 'Calibrating download...');
+        const downloadCalibration = await calibrateDownload(medianPing);
+        if (!testActive) return;
+        
+        await testDownload(downloadCalibration, medianPing);
+        if (!testActive) return;
+        
+        updateProgress(60, 'Calibrating upload...');
+        const uploadCalibration = await calibrateUpload(medianPing);
+        if (!testActive) return;
+        
+        await testUpload(uploadCalibration, medianPing);
+        
+        updateProgress(100, 'Test completed!');
+    } catch (e) {
+        console.error('Test error:', e);
+        updateProgress(0, `Error: ${e.message}`);
+    } finally {
+        testActive = false;
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        startBtn.classList.add('pulse');
     }
+}
     
     startBtn.addEventListener('click', runSpeedTest);
     stopBtn.addEventListener('click', () => {
