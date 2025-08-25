@@ -1,5 +1,5 @@
 ﻿exports.description = "Measure connection speed to the server"
-exports.version = 1.8
+exports.version = 1.9
 exports.apiRequired = 10
 exports.repo = "pavelnil/HFS-SpeedTest"
 exports.preview = ["https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot1.jpg?raw=true","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot2.jpg?raw=true","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot3.jpg?raw=true","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot4.jpg?raw=true","https://github.com/pavelnil/HFS-SpeedTest/blob/main/screenshots/screenshot5.jpg?raw=true"]
@@ -27,8 +27,18 @@ exports.config = {
         type: 'boolean'
     },
     enableGeoIP: {
-        defaultValue: false,
+        defaultValue: true,
         helperText: 'Enable country and city detection by IP',
+        type: 'boolean'
+    },
+    useExternalForLocal: {
+        defaultValue: true,
+        helperText: 'Use external service when local IP is detected',
+        type: 'boolean'
+    },
+    useExternalForNotDetected: {
+        defaultValue: true,
+        helperText: 'Use external service when IP is not detected',
         type: 'boolean'
     }
 };
@@ -74,6 +84,7 @@ exports.init = (api) => {
     };
 
     exports.middleware = async ctx => {
+        const config = getConfig();
         const { 
             allowedAccounts, 
             speedtestUrl, 
@@ -81,14 +92,16 @@ exports.init = (api) => {
             pingCount, 
             allowAnonymous,
             enableGeoIP
-        } = getConfig();
+        } = config;
         
+        const useExternalForLocal = config.useExternalForLocal !== undefined ? config.useExternalForLocal : true;
+        const useExternalForNotDetected = config.useExternalForNotDetected !== undefined ? config.useExternalForNotDetected : true;
         const currentUrl = ctx.path.replace(/\/$/, '');
         const isSpeedTestPage = currentUrl === speedtestUrl;
         const isPingOrDownload = ctx.method === 'GET' && ctx.path.startsWith('/~') && ctx.get('X-SpeedTest');
         const isUpload = ctx.method === 'POST' && ctx.path === '/~/upload' && ctx.get('X-SpeedTest');
         const isIPRequest = ctx.path === '/~/ip';
-        const isCalibration = ctx.get('X-SpeedTest') === 'calibration';
+        const isCalibration = ctx.method === 'GET' && ctx.get('X-SpeedTest') === 'calibration';
         const isCalibrationUpload = ctx.path === '/~/upload-calibration';
 
         if (!isSpeedTestPage && !isPingOrDownload && !isUpload && !isIPRequest && !isCalibration && !isCalibrationUpload) return;
@@ -116,25 +129,27 @@ exports.init = (api) => {
 
             if (isSpeedTestPage) {
                 let html = readFileSync(join(__dirname, 'public', 'speedtest.html'), 'utf8');
-
+        
                 const pluginBasePath = `/~/plugins/${path.basename(__dirname)}`;
-    
+        
                 html = html
                     .replace(/src="\.\.\/\.\.\//g, `src="${pluginBasePath}/`)
                     .replace(/href="\.\.\/\.\.\//g, `href="${pluginBasePath}/`);
-    
+        
                 const settingsScript = `
                     <script>
                         window.speedtestSettings = {
                             testDuration: ${testDuration},
                             pingCount: ${pingCount},
-                            enableGeoIP: ${enableGeoIP}
+                            enableGeoIP: ${enableGeoIP},
+                            useExternalForLocal: ${useExternalForLocal},
+                            useExternalForNotDetected: ${useExternalForNotDetected}
                         };
                     </script>
                 `;
-
+        
                 html = html.replace('</head>', `${settingsScript}</head>`);
-    
+        
                 ctx.type = 'html';
                 ctx.body = html;
                 return;
@@ -151,6 +166,14 @@ exports.init = (api) => {
                 return;
             }
 
+            if (isCalibrationUpload) {
+                ctx.request.req.on('data', () => {});
+                await new Promise(resolve => ctx.request.req.on('end', resolve));
+                ctx.status = 200;
+                ctx.body = '';
+                return;
+            }
+            
             if (isCalibration) {
                 let calibrationSize = 1 * 1024 * 1024;
                 const requestedSize = ctx.get('X-Calibration-Size');
@@ -168,14 +191,6 @@ exports.init = (api) => {
                 
                 ctx.status = 200;
                 ctx.body = downloadBuffer.slice(0, calibrationSize);
-                return;
-            }
-
-            if (isCalibrationUpload) {
-                ctx.request.req.on('data', () => {});
-                await new Promise(resolve => ctx.request.req.on('end', resolve));
-                ctx.status = 200;
-                ctx.body = '';
                 return;
             }
 
